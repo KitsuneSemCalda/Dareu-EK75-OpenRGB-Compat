@@ -1,0 +1,138 @@
+/*---------------------------------------------------------*\
+| DareuEK75Controller.h                                     |
+|                                                           |
+|   Driver for the Dareu EK75 keyboard (TK51G) through its  |
+|   2.4G receiver                                           |
+|                                                           |
+|   Protocol reverse engineered by the open-ek75 project    |
+|   (https://github.com/mateusands/open-ek75), see          |
+|   docs/RESEARCH.md for what was verified on hardware      |
+|                                                           |
+|   This file is part of the OpenRGB project                |
+|   SPDX-License-Identifier: GPL-2.0-or-later               |
+\*---------------------------------------------------------*/
+
+#pragma once
+
+#include <chrono>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
+#include <hidapi.h>
+#include "RGBController.h"
+
+/*---------------------------------------------------------*\
+| USB IDs                                                   |
+\*---------------------------------------------------------*/
+#define DAREU_VID                       0x260D
+#define DAREU_EK75_RECEIVER_PID         0x0042
+#define DAREU_EK75_RECEIVER_INTERFACE   3
+
+/*---------------------------------------------------------*\
+| Protocol                                                  |
+\*---------------------------------------------------------*/
+#define DAREU_REPORT_SIZE               64
+#define DAREU_CLASS_DEVICE              0
+#define DAREU_CLASS_LIGHTING            3
+#define DAREU_CMD_GET                   0x80
+#define DAREU_DEV_CMD_WIRELESS_STATUS   32
+#define DAREU_LED_CMD_ATTRIBUTE         1
+#define DAREU_LED_CMD_EFFECT            2
+#define DAREU_LED_CMD_BRIGHTNESS        3
+#define DAREU_LED_CMD_FRAME             4
+
+#define DAREU_REGION_KEYS               1
+#define DAREU_REGION_SIDE_LIGHT         4
+
+#define DAREU_EFFECT_OFF                0
+#define DAREU_EFFECT_STATIC             1
+#define DAREU_EFFECT_STREAMING_FRAME    18
+
+#define DAREU_MAX_COLORS                5
+#define DAREU_MIN_SPEED                 1
+#define DAREU_MAX_SPEED                 3
+
+/*---------------------------------------------------------*\
+| Region description as reported by LED_CMD_ATTRIBUTE       |
+\*---------------------------------------------------------*/
+struct DareuRegionInfo
+{
+    unsigned char               region;
+    unsigned char               type;
+    unsigned char               fps;
+    unsigned char               rows;
+    unsigned char               columns;
+    std::vector<unsigned char>  effects;
+};
+
+/*---------------------------------------------------------*\
+| Effect state of one region                                |
+\*---------------------------------------------------------*/
+struct DareuEffectState
+{
+    unsigned char               effect      = DAREU_EFFECT_STATIC;
+    unsigned char               flag        = 0;
+    unsigned char               speed       = DAREU_MIN_SPEED;
+    std::vector<RGBColor>       colors;
+};
+
+/*---------------------------------------------------------*\
+| One HID channel shared by every region of the keyboard    |
+\*---------------------------------------------------------*/
+class DareuEK75Device
+{
+public:
+    DareuEK75Device(hid_device* dev_handle, const std::string& path);
+    ~DareuEK75Device();
+
+    /*-----------------------------------------------------*\
+    | Locate the keyboard behind the receiver               |
+    \*-----------------------------------------------------*/
+    bool                        Connect();
+
+    std::string                 GetLocation();
+    unsigned short              GetKeyboardPID();
+
+    bool                        GetRegionInfo(unsigned char region, DareuRegionInfo& info);
+    bool                        GetEffect(unsigned char region, DareuEffectState& state);
+    bool                        SetEffect(unsigned char region, const DareuEffectState& state);
+    bool                        GetBrightness(unsigned char region, unsigned char& brightness);
+    bool                        SetBrightness(unsigned char region, unsigned char brightness);
+
+private:
+    bool                        Transfer(unsigned char target, unsigned char size, unsigned char cls, unsigned char command, unsigned char profile, const std::vector<unsigned char>& payload, unsigned char* reply);
+    bool                        Lighting(unsigned char command, unsigned char size, unsigned char profile, const std::vector<unsigned char>& payload, unsigned char* reply);
+
+    hid_device*                 dev;
+    std::string                 location;
+    std::mutex                  lock;
+    unsigned char               target_id;
+    unsigned short              keyboard_pid;
+    std::chrono::steady_clock::time_point last_transfer;
+};
+
+/*---------------------------------------------------------*\
+| Facade for one lighting region                            |
+\*---------------------------------------------------------*/
+class DareuEK75Controller
+{
+public:
+    DareuEK75Controller(std::shared_ptr<DareuEK75Device> device_ptr, unsigned char region_id, const DareuRegionInfo& region_info, std::string dev_name);
+
+    std::string                 GetNameString();
+    std::string                 GetDeviceLocation();
+    unsigned char               GetRegion();
+    const DareuRegionInfo&      GetRegionInfo();
+
+    bool                        GetEffect(DareuEffectState& state);
+    bool                        SetEffect(const DareuEffectState& state);
+    bool                        GetBrightness(unsigned char& brightness);
+    bool                        SetBrightness(unsigned char brightness);
+
+private:
+    std::shared_ptr<DareuEK75Device> device;
+    unsigned char               region;
+    DareuRegionInfo             info;
+    std::string                 name;
+};
