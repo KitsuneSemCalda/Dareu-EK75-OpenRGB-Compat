@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck tools/*.sh install.sh
+      - name: probe.py compiles
+        run: python3 -m py_compile tools/probe.py
+
+  test:
+    name: Tests (${{ matrix.cxx }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [g++, clang++]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang make udev
+      - name: Unit, integration and e2e
+        run: make test CXX=${{ matrix.cxx }} JUNIT=1
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.cxx }}
+          path: build/tests/*.xml
+
+  sanitize:
+    name: Tests (ASan + UBSan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y make udev
+      - name: Unit, integration and e2e under sanitizers
+        run: >
+          make test
+          CXXFLAGS="-std=c++17 -Wall -Wextra -Wno-pragmas -g -O1
+          -fsanitize=address,undefined -fno-sanitize-recover=undefined
+          -fno-omit-frame-pointer"
+
+  # The tests use thin stubs of OpenRGB's headers. Compiling the driver into the real
+  # OpenRGB is what shows when they drift from the real API.
+  build:
+    name: Build with OpenRGB
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenRGB build dependencies
+        run: >
+          sudo apt-get update && sudo apt-get install -y
+          git pkg-config qmake6 qt6-base-dev qt6-base-dev-tools qt6-tools-dev-tools
+          libusb-1.0-0-dev libhidapi-dev libmbedtls-dev
+      - name: Build
+        run: tools/build.sh
+      - name: Smoke test
+        run: build/OpenRGB/openrgb --version
