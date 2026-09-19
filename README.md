@@ -43,3 +43,15 @@ Then `build/OpenRGB/openrgb --list-devices`. The keyboard's mode switch has to b
 
 - Wired mode (`260d:0101`) is not registered: its HID interface layout is unverified.
 - Protocol credit: [open-ek75](https://github.com/mateusands/open-ek75).
+
+## License
+
+Two licenses apply, by directory:
+
+- `src/DareuEK75Controller/` is **GPL-2.0-or-later** ([LICENSE](src/DareuEK75Controller/LICENSE)).
+  It is compiled into OpenRGB and uses its API, so it has to carry OpenRGB's license.
+- Everything else (scripts, tests, docs, udev rule) is **MIT** ([LICENSE](LICENSE)).
+
+`tests/vendor/cest/` is [Cest](https://github.com/KitsuneSemCalda/Cest) under its own BSD-3-Clause license.
+The protocol was reverse engineered by [open-ek75](https://github.com/mateusands/open-ek75) (GPL-3.0);
+this repository contains no code from it, only the protocol facts documented in `docs/RESEARCH.md`.
