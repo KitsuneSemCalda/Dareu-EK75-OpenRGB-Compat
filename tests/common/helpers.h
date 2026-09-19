@@ -39,7 +39,7 @@ inline unsigned int CountSets()
     return n;
 }
 
-inline int I(unsigned char v)
+inline int I(unsigned int v)
 {
     return (int)v;
 }
