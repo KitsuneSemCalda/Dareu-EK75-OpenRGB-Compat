@@ -3,10 +3,11 @@
 # Usage: tools/build.sh [--update] [--sync-only]
 #   --update     fetch the latest OpenRGB before building
 #   --sync-only  only copy src/ into the OpenRGB tree
+# OPENRGB_DIR overrides where the OpenRGB tree lives (default build/OpenRGB).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-OPENRGB_DIR=build/OpenRGB
+OPENRGB_DIR=${OPENRGB_DIR:-build/OpenRGB}
 OPENRGB_URL=https://gitlab.com/CalcProgrammer1/OpenRGB.git
 
 if [[ ! -d $OPENRGB_DIR ]]; then
