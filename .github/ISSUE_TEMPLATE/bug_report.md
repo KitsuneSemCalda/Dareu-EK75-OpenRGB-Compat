@@ -16,4 +16,4 @@ labels: bug
 - `ls -l /dev/hidraw*` for the receiver, and whether `tools/install-udev.sh` was run:
 
 **Log**
-Run OpenRGB with `--loglevel 5` and paste the lines that start with `[Dareu EK75]`.
+Run `build/OpenRGB/openrgb --loglevel 5 -v --list-devices` and paste the lines that start with `[Dareu EK75]`.
