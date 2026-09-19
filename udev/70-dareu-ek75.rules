@@ -1,0 +1,6 @@
+# Dareu EK75: give the logged-in user access to the vendor HID interface
+# 260d:0042 = 2.4G wireless receiver, 260d:0101 = wired
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0042", TAG+="uaccess"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0101", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0042", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0101", TAG+="uaccess"
