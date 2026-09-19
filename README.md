@@ -54,4 +54,4 @@ Two licenses apply, by directory:
 
 `tests/vendor/cest/` is [Cest](https://github.com/KitsuneSemCalda/Cest) under its own BSD-3-Clause license.
 The protocol was reverse engineered by [open-ek75](https://github.com/mateusands/open-ek75) (GPL-3.0);
-this repository contains no code from it, only the protocol facts documented in `docs/RESEARCH.md`.
+`docs/RESEARCH.md` records which protocol facts come from it and which were verified on hardware.
