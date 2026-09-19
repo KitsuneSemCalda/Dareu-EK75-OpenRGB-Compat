@@ -37,6 +37,7 @@ Then `build/OpenRGB/openrgb --list-devices`. The keyboard's mode switch has to b
 | `tools/probe.py` | Stdlib Python probe for poking the protocol without OpenRGB |
 | `udev/70-dareu-ek75.rules` | `uaccess` rule (the prefix must be below 73) |
 | `docs/RESEARCH.md` | Protocol notes, what was verified and what is known not to work |
+| `docs/IMPLEMENTATION.md` | How the driver is structured and why: layers, transfers, modes, scripts |
 
 ## Status
 
