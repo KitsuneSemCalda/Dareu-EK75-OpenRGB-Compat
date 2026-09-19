@@ -41,6 +41,12 @@ DetectedControllers DetectDareuEK75(hid_device_info* info, const std::string& na
         return(detected_controllers);
     }
 
+    /*-----------------------------------------------------*\
+    | One OpenRGB device per lighting region. A region that |
+    | the firmware does not report is left out. The         |
+    | first region keeps the plain name, so scripts can     |
+    | select it with -d "Dareu EK75".                       |
+    \*-----------------------------------------------------*/
     struct
     {
         unsigned char   region;
