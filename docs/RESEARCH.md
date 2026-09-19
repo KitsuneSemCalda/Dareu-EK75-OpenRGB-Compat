@@ -100,5 +100,5 @@ Only relevant if per-key ever works; keep for the OpenRGB matrix map.
 3. Two zones: `Keyboard` (region 1) and `Side Light` (region 4), each a single-colour zone.
 4. Modes come from the firmware's own effect list (query `LED_CMD_ATTRIBUTE` at load),
    Static as the default mode. No frame streaming, ever.
-5. Rate-limit writes (the firmware echoes async; ~50 ms between commands) and never leave
-   an effect half-written.
+5. Rate-limit writes (the firmware echoes async; at least 20 ms between commands, counted
+   from the end of the previous reply) and never leave an effect half-written.
