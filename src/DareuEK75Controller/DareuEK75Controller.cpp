@@ -69,6 +69,9 @@ bool DareuEK75Device::Transfer(unsigned char target, unsigned char size, unsigne
         return(false);
     }
 
+    /*-----------------------------------------------------*\
+    | The payload has to fit after the 6 byte header        |
+    \*-----------------------------------------------------*/
     if(payload.size() > (DAREU_REPORT_SIZE - DAREU_REPLY_PAYLOAD))
     {
         return(false);
@@ -90,6 +93,10 @@ bool DareuEK75Device::Transfer(unsigned char target, unsigned char size, unsigne
     buf[5] = profile;
     memcpy(&buf[1 + DAREU_REPLY_PAYLOAD], payload.data(), payload.size());
 
+    /*-----------------------------------------------------*\
+    | The gap is measured from the end of the previous      |
+    | transfer, including its reply polling                 |
+    \*-----------------------------------------------------*/
     std::this_thread::sleep_until(last_transfer + DAREU_MIN_TRANSFER_GAP);
 
     int result = hid_send_feature_report(dev, buf, sizeof(buf));
@@ -101,6 +108,11 @@ bool DareuEK75Device::Transfer(unsigned char target, unsigned char size, unsigne
         return(false);
     }
 
+    /*-----------------------------------------------------*\
+    | buf is reused for the reply. It only counts when the  |
+    | ready nibble is set and the class matches the one     |
+    | that was sent.                                        |
+    \*-----------------------------------------------------*/
     bool ready = false;
 
     for(unsigned int i = 0; i < DAREU_REPLY_POLL_COUNT && !ready; i++)
@@ -139,6 +151,11 @@ bool DareuEK75Device::Connect()
     /*-----------------------------------------------------*\
     | Ask the receiver itself (target 0) which keyboards    |
     | are paired. Slot n is addressed as (n + 1) << 4.      |
+    |                                                       |
+    | Reply payload: slot count, then per slot three bytes  |
+    | (status, keyboard PID high, keyboard PID low). A      |
+    | non-zero status means the slot has a keyboard. The    |
+    | first such slot is used.                              |
     \*-----------------------------------------------------*/
     unsigned char reply[DAREU_REPORT_SIZE];
 
@@ -178,6 +195,11 @@ bool DareuEK75Device::GetRegionInfo(unsigned char region, DareuRegionInfo& info)
         return(false);
     }
 
+    /*-----------------------------------------------------*\
+    | Reply payload: region, type, fps, rows, columns,      |
+    | effect count, effect ids. The effect list is what     |
+    | the modes are built from.                             |
+    \*-----------------------------------------------------*/
     unsigned int count = reply[DAREU_REPLY_PAYLOAD + 5];
 
     if((DAREU_REPLY_PAYLOAD + 6 + count) > DAREU_REPORT_SIZE)
@@ -204,6 +226,10 @@ bool DareuEK75Device::GetEffect(unsigned char region, DareuEffectState& state)
         return(false);
     }
 
+    /*-----------------------------------------------------*\
+    | Reply payload: region, effect, flag, speed, colour    |
+    | count, rgb * count. The same layout is used to set.   |
+    \*-----------------------------------------------------*/
     unsigned int count = reply[DAREU_REPLY_PAYLOAD + 4];
 
     if(count > DAREU_MAX_COLORS)
@@ -237,6 +263,10 @@ bool DareuEK75Device::SetEffect(unsigned char region, const DareuEffectState& st
         count = DAREU_MAX_COLORS;
     }
 
+    /*-----------------------------------------------------*\
+    | The size byte is the payload length: 5 fixed bytes    |
+    | plus 3 per colour                                     |
+    \*-----------------------------------------------------*/
     std::vector<unsigned char> payload = { region, state.effect, state.flag, state.speed, (unsigned char)count };
 
     for(unsigned int i = 0; i < count; i++)
@@ -266,6 +296,9 @@ bool DareuEK75Device::GetBrightness(unsigned char region, unsigned char& brightn
         return(false);
     }
 
+    /*-----------------------------------------------------*\
+    | Reply payload: region, level (0 - 255)                |
+    \*-----------------------------------------------------*/
     brightness = reply[DAREU_REPLY_PAYLOAD + 1];
 
     return(true);
