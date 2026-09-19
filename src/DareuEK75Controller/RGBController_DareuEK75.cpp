@@ -113,7 +113,13 @@ void RGBController_DareuEK75::SetupModes()
 
     /*-----------------------------------------------------*\
     | Direct and Off are emulated with the Static effect,   |
-    | the firmware has no Off effect on the key matrix      |
+    | the firmware has no Off effect on the key matrix.     |
+    |                                                       |
+    | Direct exists so that clients which only speak Direct |
+    | can still set a colour. It sets the whole region to   |
+    | the colour of the single LED, it is not per key. Off  |
+    | is Static in black. Direct is listed first and Off    |
+    | last, around the firmware's own effects.              |
     \*-----------------------------------------------------*/
     if(is_keys)
     {
@@ -177,7 +183,9 @@ void RGBController_DareuEK75::SetupModes()
 
             /*---------------------------------------------*\
             | An empty colour list makes the animated       |
-            | effects cycle through the rainbow             |
+            | effects cycle through the rainbow, which is   |
+            | what "random colour" selects. ApplyMode sends |
+            | no colours in that case.                      |
             \*---------------------------------------------*/
             if(effect != DAREU_EFFECT_STATIC)
             {
@@ -211,6 +219,10 @@ void RGBController_DareuEK75::SetupModes()
 
 void RGBController_DareuEK75::SetupZones()
 {
+    /*-----------------------------------------------------*\
+    | One zone with one LED per region: the firmware only   |
+    | takes a colour for the whole region                   |
+    \*-----------------------------------------------------*/
     zone new_zone;
     new_zone.name           = (controller->GetRegion() == DAREU_REGION_KEYS) ? "Keyboard" : "Side Light";
     new_zone.type           = ZONE_TYPE_SINGLE;
@@ -232,7 +244,11 @@ void RGBController_DareuEK75::LoadCurrentState()
 {
     /*-----------------------------------------------------*\
     | Start from what the keyboard is showing so that       |
-    | loading the device does not change the lighting       |
+    | loading the device does not change the lighting.      |
+    |                                                       |
+    | A Static effect that is read back is shown as the     |
+    | firmware's Static mode, not as Direct or Off, since   |
+    | they cannot be told apart.                            |
     \*-----------------------------------------------------*/
     DareuEffectState    state;
     unsigned char       brightness;
@@ -300,6 +316,12 @@ void RGBController_DareuEK75::LoadCurrentState()
 
 void RGBController_DareuEK75::ApplyMode()
 {
+    /*-----------------------------------------------------*\
+    | Every mode is written as one effect command followed  |
+    | by, when it changed, one brightness command. The      |
+    | brightness is a separate command and is remembered in |
+    | last_brightness so that it is not resent every time.  |
+    \*-----------------------------------------------------*/
     const mode& m = modes[active_mode];
 
     DareuEffectState state;
@@ -346,6 +368,8 @@ void RGBController_DareuEK75::DeviceUpdateLEDs()
     /*-----------------------------------------------------*\
     | Only Direct follows the LED colour. The receiver      |
     | drops commands sent in bursts, so skip repeats.       |
+    | OpenRGB can call this many times a second, and each   |
+    | call would otherwise become a HID transfer.           |
     \*-----------------------------------------------------*/
     if(modes[active_mode].value == DAREU_MODE_DIRECT && colors[0] != last_direct_color)
     {
