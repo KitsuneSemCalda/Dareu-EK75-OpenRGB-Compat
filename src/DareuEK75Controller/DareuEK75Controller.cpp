@@ -91,7 +91,10 @@ bool DareuEK75Device::Transfer(unsigned char target, unsigned char size, unsigne
     buf[3] = cls;
     buf[4] = command;
     buf[5] = profile;
-    memcpy(&buf[1 + DAREU_REPLY_PAYLOAD], payload.data(), payload.size());
+    if(!payload.empty())
+    {
+        memcpy(&buf[1 + DAREU_REPLY_PAYLOAD], payload.data(), payload.size());
+    }
 
     /*-----------------------------------------------------*\
     | The gap is measured from the end of the previous      |
