@@ -1,5 +1,10 @@
 # Dareu EK75: give the logged-in user access to the vendor HID interface
 # 260d:0042 = 2.4G wireless receiver, 260d:0101 = wired
+#
+# TAG+="uaccess" makes logind grant an ACL to whoever is at the seat, so no group is needed.
+# The file name has to sort before 73-seat-late.rules: that is where uaccess tags are turned
+# into ACLs, and a rule that runs after it (a 99- prefix) is silently ignored.
+# The hidraw lines are the ones OpenRGB needs; the usb lines cover libusb-based tools.
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0042", TAG+="uaccess"
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0101", TAG+="uaccess"
 KERNEL=="hidraw*", ATTRS{idVendor}=="260d", ATTRS{idProduct}=="0042", TAG+="uaccess"
