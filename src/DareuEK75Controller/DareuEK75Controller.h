@@ -31,6 +31,22 @@
 
 /*---------------------------------------------------------*\
 | Protocol                                                  |
+|                                                           |
+| Every exchange is one 64 byte HID feature report, no      |
+| report ID:                                                |
+|                                                           |
+|   [0] target   0 = the receiver, (slot + 1) << 4 = the    |
+|                keyboard paired in that slot. In a reply   |
+|                the low nibble is a status, 2 = ready      |
+|   [1] size     payload bytes that follow the header       |
+|   [2] class    DAREU_CLASS_*                              |
+|   [3] command  DAREU_*_CMD_*, |0x80 (DAREU_CMD_GET) reads |
+|   [4] profile  1 for effect and brightness, 0 otherwise   |
+|   [5] 0                                                   |
+|   [6..] payload                                           |
+|                                                           |
+| The reply has the same layout, so the payload of a reply  |
+| starts at DAREU_REPLY_PAYLOAD (6) as well.                |
 \*---------------------------------------------------------*/
 #define DAREU_REPORT_SIZE               64
 #define DAREU_CLASS_DEVICE              0
@@ -40,7 +56,7 @@
 #define DAREU_LED_CMD_ATTRIBUTE         1
 #define DAREU_LED_CMD_EFFECT            2
 #define DAREU_LED_CMD_BRIGHTNESS        3
-#define DAREU_LED_CMD_FRAME             4
+#define DAREU_LED_CMD_FRAME             4       /* per-key frames, never sent: it wedges the receiver */
 
 #define DAREU_REGION_KEYS               1
 #define DAREU_REGION_SIDE_LIGHT         4
@@ -68,6 +84,10 @@ struct DareuRegionInfo
 
 /*---------------------------------------------------------*\
 | Effect state of one region                                |
+|                                                           |
+| flag is the direction, stored by the firmware but never   |
+| rendered. An empty colour list is valid: the animated     |
+| effects then cycle through the rainbow.                   |
 \*---------------------------------------------------------*/
 struct DareuEffectState
 {
@@ -79,6 +99,11 @@ struct DareuEffectState
 
 /*---------------------------------------------------------*\
 | One HID channel shared by every region of the keyboard    |
+|                                                           |
+| The receiver handles one command at a time, so all        |
+| transfers go through Transfer(), which serialises them    |
+| with a mutex and spaces them out. The controllers of the  |
+| regions share one instance through a shared_ptr.          |
 \*---------------------------------------------------------*/
 class DareuEK75Device
 {
