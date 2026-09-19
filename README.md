@@ -1,7 +1,11 @@
 # Dareu EK75 + OpenRGB
 
-OpenRGB controller for the Dareu EK75 (TK51G) keyboard, driven through its 2.4G receiver
-(`260d:0042`).
+[![CI](https://github.com/KitsuneSemCalda/Dareu-EK75-OpenRGB-Compat/actions/workflows/ci.yml/badge.svg)](https://github.com/KitsuneSemCalda/Dareu-EK75-OpenRGB-Compat/actions/workflows/ci.yml)
+[![License: MIT + GPL-2.0](https://img.shields.io/badge/license-MIT%20%2B%20GPL--2.0-blue.svg)](#license)
+
+Control the lighting of the Dareu EK75 (TK51G) keyboard from [OpenRGB](https://openrgb.org) on Linux,
+through its 2.4G receiver (`260d:0042`). When this was written no OpenRGB support or issue for Dareu keyboards
+was found; this is a controller for it, plus the scripts to build, install and drive it.
 
 The keyboard shows up in OpenRGB as two devices:
 
@@ -29,6 +33,15 @@ That runs, in order:
 Then `build/OpenRGB/openrgb --list-devices`. The keyboard's mode switch has to be on 2.4G.
 `tools/apply-theme.sh [theme]` applies a theme by hand; `COLOR_KEY=magenta` picks another colour.
 
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| No `Dareu EK75` in `--list-devices` | The keyboard's mode switch must be on 2.4G and the keyboard awake. Run with `--loglevel 5 -v`: `No keyboard connected to the receiver` means the receiver sees no paired keyboard. |
+| Nothing at all, not even in the log | The user cannot open the hidraw node: run `tools/install-udev.sh`, which also re-applies the rule to the connected receiver. |
+| `openrgb` from the package does not list it | Only the build made by `tools/build.sh` has the driver. `tools/install-launcher.sh` points the menu entry at it. |
+| The receiver stops responding | Replug it. The driver never sends the per-key frame command that is known to hang it. |
+
 ## Layout
 
 | Path | What |
@@ -36,8 +49,18 @@ Then `build/OpenRGB/openrgb --list-devices`. The keyboard's mode switch has to b
 | `src/DareuEK75Controller/` | The OpenRGB controller (copied into `Controllers/` by `tools/build.sh`) |
 | `tools/probe.py` | Stdlib Python probe for poking the protocol without OpenRGB |
 | `udev/70-dareu-ek75.rules` | `uaccess` rule (the prefix must be below 73) |
+| `tests/` | Unit, integration and e2e tests against a software model of the receiver, see [tests/README.md](tests/README.md) |
 | `docs/RESEARCH.md` | Protocol notes, what was verified and what is known not to work |
 | `docs/IMPLEMENTATION.md` | How the driver is structured and why: layers, transfers, modes, scripts |
+
+## Development
+
+```sh
+make test    # about half a minute, no OpenRGB build or hardware needed
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). CI runs the tests on gcc and clang, under ASan/UBSan, and builds
+the driver into the real OpenRGB.
 
 ## Status
 
