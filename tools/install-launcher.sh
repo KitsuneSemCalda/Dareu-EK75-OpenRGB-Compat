@@ -4,8 +4,8 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-BIN=$ROOT/build/OpenRGB/openrgb
-SYSTEM_ENTRY=/usr/share/applications/org.openrgb.OpenRGB.desktop
+BIN=${OPENRGB:-$ROOT/build/OpenRGB/openrgb}
+SYSTEM_ENTRY=${SYSTEM_ENTRY:-/usr/share/applications/org.openrgb.OpenRGB.desktop}
 MENU_ENTRY=~/.local/share/applications/org.openrgb.OpenRGB.desktop
 AUTOSTART=~/.config/autostart/OpenRGB.desktop
 
