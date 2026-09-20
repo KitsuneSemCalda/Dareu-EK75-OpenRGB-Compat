@@ -4,7 +4,7 @@
 Usage: probe.py [--target 0x10]
 Protocol reference: https://github.com/mateusands/open-ek75 (PROTOCOL.md)
 """
-import argparse, fcntl, glob, os, struct, sys, time
+import argparse, fcntl, glob, os, sys, time
 
 VID = 0x260D
 GET, SET = 0x80, 0x00
@@ -22,7 +22,7 @@ def find_hidraw():
             if f"{VID:04X}" not in f.read().upper():
                 continue
         desc = open(f"{node}/device/report_descriptor", "rb").read()
-        if bytes.fromhex("0600ff") in desc and bytes.fromhex("954" + "0b1") in desc:
+        if bytes.fromhex("0600ff") in desc and bytes.fromhex("9540b1") in desc:
             return "/dev/" + os.path.basename(node)
     sys.exit("vendor hidraw interface not found")
 
