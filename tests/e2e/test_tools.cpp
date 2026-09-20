@@ -125,14 +125,14 @@ void run_tools_tests()
     });
 
     describe("install-launcher.sh", {
-        it("points the menu entry at the build and keeps the other lines", {
+        it("points the menu entry at the installed copy and keeps the other lines", {
             ToolEnv env("", "");
             WriteFile(env.home + "/system.desktop", "[Desktop Entry]\nName=OpenRGB\nExec=/usr/bin/openrgb\nIcon=openrgb\n");
             ShellResult r = Sh(env.prefix + "SYSTEM_ENTRY='" + env.home + "/system.desktop' " + Tool("install-launcher.sh"));
             std::string entry = ReadFile(env.home + "/.local/share/applications/org.openrgb.OpenRGB.desktop");
 
             expect(r.code).toEqual(0);
-            expect(entry).toContain("Exec=" + env.home + "/bin/openrgb\n");
+            expect(entry).toContain("Exec=" + env.home + "/.local/lib/dareu-ek75/openrgb\n");
             expect(entry).toContain("Name=OpenRGB");
             expect(entry).toContain("Icon=openrgb");
             expect(Contains(entry, "/usr/bin/openrgb")).toBeFalsy();
@@ -144,7 +144,7 @@ void run_tools_tests()
             WriteFile(env.home + "/.config/autostart/OpenRGB.desktop", "[Desktop Entry]\nExec=/usr/bin/openrgb --startminimized\n");
             Sh(env.prefix + "SYSTEM_ENTRY='" + env.home + "/system.desktop' " + Tool("install-launcher.sh"));
 
-            expect(ReadFile(env.home + "/.config/autostart/OpenRGB.desktop")).toContain("Exec=" + env.home + "/bin/openrgb\n");
+            expect(ReadFile(env.home + "/.config/autostart/OpenRGB.desktop")).toContain("Exec=" + env.home + "/.local/lib/dareu-ek75/openrgb\n");
         });
 
         it("does not create an autostart entry that was not there", {

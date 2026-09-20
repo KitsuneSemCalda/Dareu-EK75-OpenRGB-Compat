@@ -4,12 +4,15 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-BIN=${OPENRGB:-$ROOT/build/OpenRGB/openrgb}
+SOURCE=${OPENRGB:-$ROOT/build/OpenRGB/openrgb}
+BIN=$HOME/.local/lib/dareu-ek75/openrgb
 SYSTEM_ENTRY=${SYSTEM_ENTRY:-/usr/share/applications/org.openrgb.OpenRGB.desktop}
 MENU_ENTRY=~/.local/share/applications/org.openrgb.OpenRGB.desktop
 AUTOSTART=~/.config/autostart/OpenRGB.desktop
 
-[[ -x $BIN ]] || { echo "$BIN not built yet, run tools/build.sh" >&2; exit 1; }
+[[ -x $SOURCE ]] || { echo "$SOURCE not built yet, run tools/build.sh" >&2; exit 1; }
+[[ -f $SYSTEM_ENTRY ]] || { echo "$SYSTEM_ENTRY not found" >&2; exit 1; }
+install -Dm755 "$SOURCE" "$BIN"
 
 # Same file name as the system entry, so it takes over the menu launcher.
 mkdir -p "$(dirname "$MENU_ENTRY")"
