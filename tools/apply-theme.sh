@@ -4,8 +4,7 @@
 # The keyboard takes one colour per region, so a full palette can't be shown.
 set -euo pipefail
 
-ROOT=$(cd "$(dirname "$0")/.." && pwd)
-OPENRGB=${OPENRGB:-$ROOT/build/OpenRGB/openrgb}
+OPENRGB=${OPENRGB:-$HOME/.local/lib/dareu-ek75/openrgb}
 COLOR_KEY=${COLOR_KEY:-accent}
 
 name=${1:-$(omarchy theme current)}

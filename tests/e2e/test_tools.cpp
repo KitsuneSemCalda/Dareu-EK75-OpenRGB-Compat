@@ -96,14 +96,14 @@ void run_tools_tests()
     });
 
     describe("install-hook.sh", {
-        it("installs an executable theme-set hook that calls apply-theme.sh", {
+        it("installs an executable copy of apply-theme.sh", {
             ToolEnv env("tokyo-night", THEME_TOKYO);
             ShellResult r = Sh(env.prefix + Tool("install-hook.sh"));
             std::string hook = env.home + "/.config/omarchy/hooks/theme-set.d/dareu-ek75";
 
             expect(r.code).toEqual(0);
             expect(IsExecutable(hook)).toBeTruthy();
-            expect(ReadFile(hook)).toContain(Root() + "/tools/apply-theme.sh");
+            expect(ReadFile(hook)).toEqual(ReadFile(Tool("apply-theme.sh")));
         });
 
         it("makes the hook apply the theme Omarchy passes to it, not the current one", {
@@ -125,6 +125,19 @@ void run_tools_tests()
     });
 
     describe("install-launcher.sh", {
+        it("runs the installed hook after removing the source binary and scripts", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            WriteFile(env.home + "/system.desktop", "[Desktop Entry]\nExec=/usr/bin/openrgb\n");
+            std::string checkout = env.home + "/checkout";
+            expect(Sh("mkdir -p '" + checkout + "/tools' && cp '" + Root() + "/tools/'*.sh '" + checkout + "/tools/'").code).toEqual(0);
+            expect(Sh(env.prefix + "SYSTEM_ENTRY='" + env.home + "/system.desktop' " + checkout + "/tools/install-launcher.sh").code).toEqual(0);
+            expect(Sh(env.prefix + checkout + "/tools/install-hook.sh").code).toEqual(0);
+            expect(Sh("rm -rf '" + checkout + "' '" + env.home + "/bin/openrgb'").code).toEqual(0);
+            ShellResult r = Sh(env.prefix + "env -u OPENRGB " + env.home + "/.config/omarchy/hooks/theme-set.d/dareu-ek75");
+            expect(r.code).toEqual(0);
+            expect(env.Args()).toContain("-c|7aa2f7|");
+        });
+
         it("points the menu entry at the installed copy and keeps the other lines", {
             ToolEnv env("", "");
             WriteFile(env.home + "/system.desktop", "[Desktop Entry]\nName=OpenRGB\nExec=/usr/bin/openrgb\nIcon=openrgb\n");
