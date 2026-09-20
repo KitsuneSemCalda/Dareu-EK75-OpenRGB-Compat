@@ -263,6 +263,7 @@ bool DareuEK75Device::SetEffect(unsigned char region, const DareuEffectState& st
 
     if(count > DAREU_MAX_COLORS)
     {
+        LOG_DEBUG("[Dareu EK75] %u colours requested, sending the first %d", count, DAREU_MAX_COLORS);
         count = DAREU_MAX_COLORS;
     }
 

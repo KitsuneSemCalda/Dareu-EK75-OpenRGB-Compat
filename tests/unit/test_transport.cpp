@@ -206,6 +206,17 @@ int main(int argc, char* argv[])
             expect(I(p[1])).toEqual(20);
             expect(I(p[10])).toEqual(5);
         });
+
+        it("logs when it drops colours above the limit", {
+            auto dev = Connected();
+            DareuEffectState s;
+            s.effect = 2;
+            s.colors.assign(8, ToRGBColor(1, 2, 3));
+
+            dev->SetEffect(1, s);
+
+            expect(HasLog("8 colours")).toBeTruthy();
+        });
     });
 
     describe("Reply decoding", {
