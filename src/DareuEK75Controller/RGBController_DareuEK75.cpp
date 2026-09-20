@@ -335,7 +335,6 @@ void RGBController_DareuEK75::ApplyMode()
     {
         state.effect = DAREU_EFFECT_STATIC;
         state.colors.push_back(colors[0]);
-        last_direct_color = colors[0];
     }
     else
     {
@@ -352,7 +351,21 @@ void RGBController_DareuEK75::ApplyMode()
         }
     }
 
-    controller->SetEffect(state);
+    /*-----------------------------------------------------*\
+    | The colour is only remembered once the keyboard took  |
+    | it, so a Direct update that got no reply is retried   |
+    | by the next DeviceUpdateLEDs                          |
+    \*-----------------------------------------------------*/
+    if(!controller->SetEffect(state))
+    {
+        LOG_WARNING("[Dareu EK75] Could not apply mode %s to region %d", m.name.c_str(), controller->GetRegion());
+        return;
+    }
+
+    if(m.value == DAREU_MODE_DIRECT)
+    {
+        last_direct_color = colors[0];
+    }
 
     if((m.flags & MODE_FLAG_HAS_BRIGHTNESS) && (int)m.brightness != last_brightness)
     {

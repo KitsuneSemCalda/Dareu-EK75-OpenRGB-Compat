@@ -509,6 +509,27 @@ int main(int argc, char* argv[])
             Free(found);
         });
 
+        it("sends a colour again when the first attempt got no reply", {
+            DetectedControllers found = Detect();
+            RGBController* keys = found[0];
+
+            keys->SetActiveMode(FindMode(keys, "Direct"));
+
+            /* the keyboard stops answering: its target no longer matches the slot */
+            g_receiver.slot = 1;
+            keys->colors[0] = ToRGBColor(0, 0, 255);
+            keys->UpdateLEDs();
+            expect(FwColor(1, 0, 0, 255)).toBeFalsy();
+
+            g_receiver.slot = 0;
+            Forget();
+            keys->UpdateLEDs();
+
+            expect(I(CountSets())).toEqual(1);
+            expect(FwColor(1, 0, 0, 255)).toBeTruthy();
+            Free(found);
+        });
+
         it("is ignored by other modes when the LED colour changes", {
             DetectedControllers found = Detect();
             RGBController* keys = found[0];
