@@ -94,11 +94,13 @@ Only relevant if per-key ever works; keep for the OpenRGB matrix map.
 
 ## Design decisions for the OpenRGB controller
 
-1. Detect on `260d:0042` and `260d:0101`, interface 3, usage page `0xFF00`.
+1. Detect on `260d:0042`, interface 3 (usage page `0xFF00`). Wired mode (`260d:0101`) is not
+   registered: its interface layout has not been verified.
 2. Probe wireless status at load: pick `TargetId = (slot+1)<<4` for the first slot that
-   reports a keyboard; `0` when the wired PID is used.
-3. Two zones: `Keyboard` (region 1) and `Side Light` (region 4), each a single-colour zone.
-4. Modes come from the firmware's own effect list (query `LED_CMD_ATTRIBUTE` at load),
-   Static as the default mode. No frame streaming, ever.
-5. Rate-limit writes (the firmware echoes async; at least 20 ms between commands, counted
-   from the end of the previous reply) and never leave an effect half-written.
+   reports a keyboard. Without a paired keyboard nothing is detected.
+3. Two OpenRGB devices, `Dareu EK75` (region 1) and `Dareu EK75 Side Light` (region 4), each with
+   one zone and one LED, since the firmware takes one colour per region.
+4. Modes come from the firmware's own effect list (query `LED_CMD_ATTRIBUTE` at load). The
+   mode active at start is the one the keyboard is already in. No frame streaming, ever.
+5. Rate-limit writes: at least 20 ms between commands, counted from the end of the previous
+   reply (the firmware echoes asynchronously).
