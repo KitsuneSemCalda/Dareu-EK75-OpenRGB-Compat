@@ -53,9 +53,16 @@ It needs the Qt 6 build dependencies of OpenRGB and runs four steps:
 
 1. `tools/install-udev.sh` lets your user open the receiver's hidraw node (asks for sudo)
 2. `tools/build.sh` clones OpenRGB into `build/`, adds `src/DareuEK75Controller` and compiles
-3. `tools/install-launcher.sh` points the OpenRGB menu entry and login autostart at this build,
+3. `tools/install-launcher.sh` copies the build to `~/.local/lib/dareu-ek75/openrgb`
+   and points the OpenRGB menu entry and login autostart at that copy,
    because the packaged `openrgb` has no EK75 driver
 4. `tools/install-hook.sh` colours the keyboard with the accent of every Omarchy theme you switch to
+
+The launcher and theme hook use installed copies, so moving or deleting this
+checkout does not break them. After rebuilding, run `tools/install-launcher.sh`
+again to update the installed binary. Run `tools/install-hook.sh` again after
+changing the theme script. Direct use of `tools/apply-theme.sh` defaults to the
+installed binary; set `OPENRGB=/path/to/openrgb` to test another build.
 
 Then check it:
 
