@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Direct USB support (`260d:0045`), verified `[hw]`: same vendor interface, protocol and effect
+  table as the 2.4G receiver. `DareuEK75Device::Connect()` skips the receiver's pairing handshake
+  and addresses the keyboard at `TargetId 0` directly for this PID. See
+  `docs/RESEARCH.md#direct-usb-wired`.
+- `tools/apply-theme.sh` now resolves the theme colour from a `keyboard.rgb` file in the theme
+  directory first, falling back to `COLOR_KEY` (default `accent`) from `colors.toml`.
+- An optional perceptual colour transform for the Omarchy integration (`tools/color_transform.py`,
+  `~/.config/dareu-ek75/color-profile.toml`): OKLCh lightness/chroma clamping, per-channel gain and
+  gamma, and a separate physical brightness, applied before the (unchanged) driver. No profile file:
+  behaviour is identical to before this existed. See `docs/THEME_COLOR.md`.
+- `tools/calibrate_color.py`, sending predictable colour/brightness sequences for studying the
+  keyboard's real response.
+
+### Changed
+- Corrected the wired PID in `docs/RESEARCH.md`: `260d:0101` (from the open-ek75 reference) was
+  never verified on this unit and does not match what it actually reports (`260d:0045`). Both PIDs
+  are still in the udev rule; only `0x0045` is registered by the driver.
+- `tools/apply-theme.sh` no longer forces `Static`. It omits `-m`, so OpenRGB reapplies the colour
+  to whichever mode the keyboard is already in (Raindrop, Breathing, ...); a mode with no colour
+  slot is left animating, untouched.
+
 ## 0.1.0 - 2026-09-19
 
 First release.

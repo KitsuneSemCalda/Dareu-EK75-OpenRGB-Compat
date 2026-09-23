@@ -4,9 +4,10 @@
 [![License: MIT + GPL-2.0](https://img.shields.io/badge/license-MIT%20%2B%20GPL--2.0-blue.svg)](#license)
 
 An [OpenRGB](https://openrgb.org) controller for the Dareu EK75 (TK51G) keyboard on Linux, working
-through its 2.4G receiver (`260d:0042`). When it was written, no OpenRGB support or issue for Dareu
-keyboards could be found. The repository holds the controller, the scripts that build and install
-it, the protocol notes, and a test suite that runs without the keyboard.
+through its 2.4G receiver (`260d:0042`) or a direct USB connection (`260d:0045`). When it was
+written, no OpenRGB support or issue for Dareu keyboards could be found. The repository holds the
+controller, the scripts that build and install it, the protocol notes, and a test suite that runs
+without the keyboard.
 
 ```console
 $ build/OpenRGB/openrgb -ld
@@ -39,8 +40,11 @@ lighting.
   own software can draw per key, and a frame packet sent through the receiver hangs it until it is
   unplugged. The driver refuses to send one. `Direct` therefore paints the whole region with one
   colour. The evidence is in [docs/RESEARCH.md](docs/RESEARCH.md).
-- **2.4G receiver only.** The keyboard's mode switch must be on 2.4G. Wired mode (`260d:0101`) is not
-  registered because its HID interface layout has not been verified.
+- **Two transports, one PID each.** The 2.4G receiver (`260d:0042`) and a direct USB cable
+  (`260d:0045`, verified [hw]) both work. A `260d:0101` wired PID from a reference project was
+  never seen on this unit and is not registered; if your EK75 enumerates as something else
+  wired, [open a hardware report](../../issues/new?template=hardware_report.md) with
+  `tools/probe.py`'s output.
 - **Side light Static** ignores the colour and shows a fixed pattern, so that mode has no colour picker.
 
 ## Install
@@ -56,7 +60,8 @@ It needs the Qt 6 build dependencies of OpenRGB and runs four steps:
 3. `tools/install-launcher.sh` copies the build to `~/.local/lib/dareu-ek75/openrgb`
    and points the OpenRGB menu entry and login autostart at that copy,
    because the packaged `openrgb` has no EK75 driver
-4. `tools/install-hook.sh` colours the keyboard with the accent of every Omarchy theme you switch to
+4. `tools/install-hook.sh` colours the keyboard on every Omarchy theme change, and installs
+   `tools/color_transform.py` to `~/.local/lib/dareu-ek75/` alongside it
 
 The launcher and theme hook use installed copies, so moving or deleting this
 checkout does not break them. After rebuilding, run `tools/install-launcher.sh`
@@ -79,36 +84,50 @@ build/OpenRGB/openrgb -d "Dareu EK75" -m Static -c 7aa2f7
 build/OpenRGB/openrgb -ld                     # devices and their modes
 ```
 
-`tools/apply-theme.sh [theme]` sets the key backlight to the accent colour of an Omarchy theme, by
-default the current one. `COLOR_KEY=background tools/apply-theme.sh` picks another colour from the
-theme's `colors.toml`. The keyboard takes one colour per region, so a whole palette cannot be shown.
+`tools/apply-theme.sh [theme]` sets the key backlight to a colour resolved from an Omarchy theme (its
+own `keyboard.rgb` if it has one, else `COLOR_KEY` from `colors.toml`, default `accent`), by default
+for the current theme. `COLOR_KEY=background tools/apply-theme.sh` picks another key. The keyboard
+takes one colour per region, so a whole palette cannot be shown. It keeps whatever mode is already
+active (Raindrop, Breathing, ...) instead of switching to `Static`; only the colour changes, and a
+mode with no colour slot just keeps animating.
+
+Sending the theme's RGB straight to the LEDs does not mean it will *look* the same as on a monitor.
+An optional `~/.config/dareu-ek75/color-profile.toml` lets you correct for that (lightness/chroma
+clamping in OKLCh, per-channel gain and gamma, physical brightness) without touching the driver at
+all; with no such file, colours go through unmodified, same as before this existed. See
+[docs/THEME_COLOR.md](docs/THEME_COLOR.md) for the pipeline, the profile format, and
+`tools/calibrate_color.py` for probing how your own keyboard responds.
 
 ## Troubleshooting
 
 | Symptom | Check |
 |---|---|
-| No `Dareu EK75` in `--list-devices` | The mode switch must be on 2.4G and the keyboard awake. Run with `--loglevel 5 -v`: `No keyboard connected to the receiver` means the receiver sees no paired keyboard. |
+| No `Dareu EK75` in `--list-devices` | Wired: check the cable and that udev granted access (below). Through the receiver: the mode switch must be on 2.4G and the keyboard awake. Run with `--loglevel 5 -v`: `No keyboard connected to the receiver` means the receiver sees no paired keyboard. |
 | Nothing at all, not even in the log | The user cannot open the hidraw node. Run `tools/install-udev.sh`, which also re-applies the rule to the connected receiver. |
 | The packaged `openrgb` does not list it | Only the build made by `tools/build.sh` has the driver. `tools/install-launcher.sh` points the menu entry at it. |
 | The receiver stops responding | Replug it. |
 
 ## How it works
 
-The receiver has one vendor HID interface (interface 3, usage page `0xFF00`). Every command is a
-64 byte feature report, and the keyboard behind the receiver is addressed as `(slot + 1) << 4`.
-The receiver answers asynchronously and drops commands that come too close together, so the driver
-polls for the reply and keeps a gap between transfers. Modes are built from the effect list the
-firmware reports instead of being hard coded per model.
+Both transports have one vendor HID interface (interface 3, usage page `0xFF00`) and every command
+is a 64 byte feature report. Through the receiver, the keyboard behind it is addressed as
+`(slot + 1) << 4`, found by asking the receiver which slots are paired; wired, the keyboard answers
+directly at target 0, no pairing step. Either way, replies are asynchronous and commands too close
+together get dropped, so the driver polls for the reply and keeps a gap between transfers. Modes
+are built from the effect list the firmware reports instead of being hard coded per model.
 
 - [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md): layers, one transfer step by step, how modes are built
 - [docs/RESEARCH.md](docs/RESEARCH.md): the protocol, what was verified on this keyboard and what was taken from a reference
+- [docs/THEME_COLOR.md](docs/THEME_COLOR.md): the Omarchy integration layer — theme colour resolution,
+  the OKLCh transform, the colour profile, brightness, and calibration. This is *not* part of the
+  hardware protocol; the driver only ever receives a plain RGB.
 
 ## Repository
 
 | Path | What |
 |---|---|
 | `src/DareuEK75Controller/` | The OpenRGB controller, copied into `Controllers/` by `tools/build.sh` |
-| `tools/` | Build, install and theme scripts, and `probe.py`, a stdlib probe for the protocol without OpenRGB |
+| `tools/` | Build, install and theme scripts; `color_transform.py`/`calibrate_color.py` (theme colour calibration, see [docs/THEME_COLOR.md](docs/THEME_COLOR.md)); `probe.py`, a stdlib probe for the protocol without OpenRGB |
 | `udev/70-dareu-ek75.rules` | `uaccess` rule (the file name prefix must be below 73) |
 | `tests/` | Unit, integration and e2e tests against a software model of the receiver ([tests/README.md](tests/README.md)) |
 | `docs/` | Research notes and implementation notes |

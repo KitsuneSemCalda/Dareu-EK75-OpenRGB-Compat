@@ -1,10 +1,10 @@
 # Research: Dareu EK75 + OpenRGB
 
 Findings that drive the design. Everything marked **[hw]** was verified on this
-machine's keyboard through its 2.4G dongle; everything marked **[ref]** comes
-from the open-ek75 project (https://github.com/mateusands/open-ek75, GPL-3.0,
-recovered from Dareu's web driver and Husky's Windows app) and was tested there
-on the wired keyboard only.
+machine's keyboard, either through its 2.4G dongle or over a direct USB cable (both are
+noted where it matters); everything marked **[ref]** comes from the open-ek75 project
+(https://github.com/mateusands/open-ek75, GPL-3.0, recovered from Dareu's web driver and
+Husky's Windows app) and was tested there on the wired keyboard only.
 
 ## Hardware
 
@@ -12,8 +12,9 @@ on the wired keyboard only.
 |---|---|
 | Keyboard | Dareu EK75, model `TK51G`, profile `https://dr.dareu.com/products/0045/0045.json` **[ref]** |
 | Dongle (USB) | `260d:0042` "USB 2.4G Receiver", 5 HID interfaces **[hw]** |
-| Keyboard PID via dongle | `0x0045` **[hw]** (wired mode enumerates as `260d:0101`; same model, same LED matrix) |
-| Control interface | interface 3, usage page `0xFF00`, 64-byte feature report, no Report ID **[hw]** |
+| Keyboard PID via dongle | `0x0045` **[hw]** |
+| Keyboard PID over direct USB | `260d:0045` **[hw]**, product string `EK75_Keyboard`, 5 HID interfaces — see [Direct USB (wired)](#direct-usb-wired). Corrects an earlier guess of `260d:0101`, taken from open-ek75 **[ref]** and never verified on this unit; that PID is kept in the udev rule in case another EK75 revision uses it. |
+| Control interface | interface 3, usage page `0xFF00`, 64-byte feature report, no Report ID **[hw]**, same on both transports |
 | Detection signature | descriptor contains `06 00 ff` and `95 40 b1` |
 
 ## Transport **[hw]**
@@ -28,6 +29,32 @@ on the wired keyboard only.
   only the dongle itself (e.g. wireless status).
 - Wireless status (`class 0, cmd 0x20|GET, size 7, profile 0`): reply byte 6 = slot
   count, then `status, pid_hi, pid_lo` per slot. Ours: `01 | 01 00 45`.
+
+## Direct USB (wired) **[hw]**
+
+Verified on this unit by plugging the keyboard in directly instead of through the dongle,
+using `tools/probe.py`-style GET-only queries (see [Per-key colour](#per-key-colour-openrgb-direct-mode)
+below for why nothing beyond GET was tried here).
+
+- Enumerates as `260d:0045`, product string `EK75_Keyboard`, 5 HID interfaces, same
+  layout as through the dongle. The vendor interface (usage page `0xFF00`, descriptor
+  signature `06 00 ff` / `95 40 b1`) is on interface 3, same as the dongle.
+- The class 0 wireless-status query (`class 0, cmd 0x20|GET`) gets **no reply** at all,
+  any target. Expected: there is no dongle to interrogate, and this class is receiver-only.
+- Class 3 lighting queries get a normal reply at **`TargetId 0`**, and also at `TargetId 0x10`
+  (the dongle's slot-0 address) — the keyboard does not appear to check the target at all
+  when there is no dongle multiplexing several slots. Captured on this unit, region 1:
+  - `ATTRIBUTE get`: `region=1, type=4, fps=0x21(33), rows=6, columns=0x0f(15)`, effect list
+    `01 02 05 0b 04 09 06 03 0a 14 15 16 ...` — byte-for-byte the same region-1 attributes and
+    effect table as through the dongle (see [Lighting](#lighting-hw) below).
+  - `EFFECT get`: `region=1, effect=6 (Raindrop), flag=0, speed=1, ncolors=1, rgb=ff ff ff`
+    (whatever the keyboard happened to be showing at probe time).
+  - `BRIGHTNESS get`: `region=1, level=0xff`.
+- Conclusion: identical protocol, packet layout and effect table on both transports. The
+  driver picks the addressing scheme from the PID it was detected on
+  (`DareuEK75Device::Connect()`): the receiver's pairing handshake for `0x0042`, straight to
+  `TargetId 0` for `0x0045`, no handshake. `LED_CMD_FRAME` was **not** tested over this
+  transport and the driver's refusal to ever send it (see below) is unconditional either way.
 
 ## Lighting **[hw]**
 
@@ -94,10 +121,13 @@ Only relevant if per-key ever works; keep for the OpenRGB matrix map.
 
 ## Design decisions for the OpenRGB controller
 
-1. Detect on `260d:0042`, interface 3 (usage page `0xFF00`). Wired mode (`260d:0101`) is not
-   registered: its interface layout has not been verified.
-2. Probe wireless status at load: pick `TargetId = (slot+1)<<4` for the first slot that
-   reports a keyboard. Without a paired keyboard nothing is detected.
+1. Detect on `260d:0042` (2.4G receiver) and `260d:0045` (direct USB), both interface 3
+   (usage page `0xFF00`). `260d:0101`, the wired PID guessed from the open-ek75 reference,
+   is not registered: it was never seen on this unit and would need its own verification.
+2. Through the receiver, probe wireless status at load and pick `TargetId = (slot+1)<<4`
+   for the first slot that reports a keyboard; without a paired keyboard nothing is
+   detected. Over direct USB, skip that handshake entirely and use `TargetId 0`, which the
+   keyboard answers directly (see [Direct USB (wired)](#direct-usb-wired)).
 3. Two OpenRGB devices, `Dareu EK75` (region 1) and `Dareu EK75 Side Light` (region 4), each with
    one zone and one LED, since the firmware takes one colour per region.
 4. Modes come from the firmware's own effect list (query `LED_CMD_ATTRIBUTE` at load). The

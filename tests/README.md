@@ -8,17 +8,19 @@ make test-e2e
 make test JUNIT=1      # also writes build/tests/*.xml
 ```
 
-Needs `g++` (or `clang++`), `make`, `python3`. `udevadm` is used when present. No OpenRGB build, Qt
-or keyboard is needed: the tests run the real driver code against a software model of the
-receiver. Written with [Cest](https://github.com/KitsuneSemCalda/Cest), vendored in `vendor/cest/`.
+Needs `g++` (or `clang++`), `make`, `python3` (3.11+, for stdlib `tomllib`). `udevadm` is used when
+present. No OpenRGB build, Qt or keyboard is needed: the tests run the real driver code against a
+software model of the receiver. Written with [Cest](https://github.com/KitsuneSemCalda/Cest),
+vendored in `vendor/cest/`.
 
 ## Suites
 
 | Suite | Scope | What it checks |
 |---|---|---|
-| `unit/` | `DareuEK75Device`, `DareuEK75Controller` | Packet bytes, reply decoding, slot to target mapping, colour and payload limits, the 20 ms gap, reply polling, the `LED_CMD_FRAME` refusal, thread safety |
-| `integration/` | detector + controllers + modes | What OpenRGB sees: devices and names, the mode list of each region, speed/colour/brightness flags, reading the keyboard state at load, Direct and Off emulation, brightness and colour throttling |
-| `e2e/` | the whole system | Full sessions and restarts against the fake, a receiver that stops answering, both regions from two threads; then the real `tools/*.sh`, `install.sh`, the udev rule and `probe.py` run in a scratch `HOME` with a fake `openrgb` |
+| `unit/` (Cest) | `DareuEK75Device`, `DareuEK75Controller` | Packet bytes, reply decoding, slot to target mapping, colour and payload limits, the 20 ms gap, reply polling, the `LED_CMD_FRAME` refusal, thread safety |
+| `integration/` (Cest) | detector + controllers + modes | What OpenRGB sees: devices and names, the mode list of each region, speed/colour/brightness flags, reading the keyboard state at load, Direct and Off emulation, brightness and colour throttling |
+| `e2e/` (Cest) | the whole system | Full sessions and restarts against the fake, a receiver that stops answering, both regions from two threads; then the real `tools/*.sh`, `install.sh`, the udev rule and `probe.py` run in a scratch `HOME` with a fake `openrgb`, including theme colour resolution (`keyboard.rgb` vs `COLOR_KEY`) and the colour-profile file |
+| `test-color-transform` (`unittest`) | `tools/color_transform.py`, `tools/calibrate_color.py` | Hex parsing, the OKLCh transform (extremes, lightness/chroma clamping, hue preservation, gain, gamma), profile loading and validation, calibration sequence generation, Ctrl+C handling — no OpenRGB or shell involved |
 
 The e2e suite cannot cover the real hardware or the real OpenRGB core: the receiver is the fake,
 and `install-udev.sh` needs root so only the rule file itself is checked (`udevadm verify`).
