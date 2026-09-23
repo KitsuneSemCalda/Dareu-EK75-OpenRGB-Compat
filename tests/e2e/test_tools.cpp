@@ -220,18 +220,19 @@ void run_tools_tests()
         it("matches the USB ids the driver detects, for usb and hidraw", {
             std::string rule = ReadFile(Root() + "/udev/70-dareu-ek75.rules");
             std::string vid = "idVendor}==\"" + Hex(DAREU_VID) + "\"";
-            std::string pid = "idProduct}==\"" + Hex(DAREU_EK75_RECEIVER_PID) + "\"";
 
             expect(rule).toContain(vid);
-            expect(rule).toContain(pid);
+            expect(rule).toContain("idProduct}==\"" + Hex(DAREU_EK75_RECEIVER_PID) + "\"");
+            expect(rule).toContain("idProduct}==\"" + Hex(DAREU_EK75_WIRED_PID) + "\"");
             expect(rule).toContain("KERNEL==\"hidraw*\"");
             expect(rule).toContain("SUBSYSTEMS==\"usb\"");
         });
 
-        it("grants access with uaccess and covers the wired keyboard too", {
+        it("grants access with uaccess and covers both wired PIDs the project knows about", {
             std::string rule = ReadFile(Root() + "/udev/70-dareu-ek75.rules");
 
             expect(rule).toContain("TAG+=\"uaccess\"");
+            expect(rule).toContain("\"0045\"");
             expect(rule).toContain("\"0101\"");
         });
 

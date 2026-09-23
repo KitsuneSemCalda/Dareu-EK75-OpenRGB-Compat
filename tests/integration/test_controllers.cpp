@@ -26,7 +26,18 @@ static DetectedControllers Detect()
 {
     hid_device_info info;
     char path[] = "/dev/hidraw9";
-    info.path = path;
+    info.path       = path;
+    info.product_id = DAREU_EK75_RECEIVER_PID;
+
+    return DetectDareuEK75(&info, "Dareu EK75");
+}
+
+static DetectedControllers DetectWired()
+{
+    hid_device_info info;
+    char path[] = "/dev/hidraw5";
+    info.path       = path;
+    info.product_id = DAREU_EK75_WIRED_PID;
 
     return DetectDareuEK75(&info, "Dareu EK75");
 }
@@ -92,15 +103,25 @@ int main(int argc, char* argv[])
     cest_init(argc, argv);
 
     describe("Detector registration", {
-        it("registers for the receiver, interface 3", {
+        it("registers for both the receiver and a direct USB connection, interface 3", {
             const std::vector<TestHIDDetector>& list = TestHIDDetectors();
 
-            expect((int)list.size()).toEqual(1);
-            expect(list[0].name).toEqual("Dareu EK75");
-            expect(I(list[0].vid >> 8)).toEqual(0x26);
-            expect(I(list[0].vid & 0xFF)).toEqual(0x0D);
-            expect(I(list[0].pid)).toEqual(0x42);
-            expect(list[0].interface_number).toEqual(3);
+            expect((int)list.size()).toEqual(2);
+
+            for(const TestHIDDetector& entry : list)
+            {
+                expect(entry.name).toEqual("Dareu EK75");
+                expect(I(entry.vid >> 8)).toEqual(0x26);
+                expect(I(entry.vid & 0xFF)).toEqual(0x0D);
+                expect(entry.interface_number).toEqual(3);
+            }
+
+            std::vector<unsigned short> pids;
+            pids.push_back(list[0].pid);
+            pids.push_back(list[1].pid);
+
+            expect(std::find(pids.begin(), pids.end(), 0x42) != pids.end()).toBeTruthy();
+            expect(std::find(pids.begin(), pids.end(), 0x45) != pids.end()).toBeTruthy();
         });
     });
 
@@ -167,6 +188,39 @@ int main(int argc, char* argv[])
             expect(found[0]->zones[0].name).toEqual("Keyboard");
             expect(found[1]->zones[0].name).toEqual("Side Light");
             Free(found);
+        });
+    });
+
+    describe("Detection (direct USB, PID 0x0045)", {
+        beforeEach(Fresh);
+
+        it("finds both regions with no pairing step at all", {
+            g_receiver.wired = true;
+            DetectedControllers found = DetectWired();
+
+            expect((int)found.size()).toEqual(2);
+            expect(found[0]->name).toEqual("Dareu EK75");
+            expect(found[1]->name).toEqual("Dareu EK75 Side Light");
+            Free(found);
+        });
+
+        it("never sends a wireless status query", {
+            g_receiver.wired = true;
+            DetectedControllers found = DetectWired();
+
+            for(const FakePacket& p : g_receiver.sent)
+            {
+                expect(I(p[2]) == 0 && I(p[3]) == 0xA0).toBeFalsy();
+            }
+            Free(found);
+        });
+
+        it("finds nothing if the keyboard's own lighting class does not answer", {
+            g_receiver.wired  = true;
+            g_receiver.regions.clear();
+            DetectedControllers found = DetectWired();
+
+            expect((int)found.size()).toEqual(0);
         });
     });
 

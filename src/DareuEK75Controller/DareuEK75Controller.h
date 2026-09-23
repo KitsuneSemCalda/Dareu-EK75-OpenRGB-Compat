@@ -1,8 +1,8 @@
 /*---------------------------------------------------------*\
 | DareuEK75Controller.h                                     |
 |                                                           |
-|   Driver for the Dareu EK75 keyboard (TK51G) through its  |
-|   2.4G receiver                                           |
+|   Driver for the Dareu EK75 keyboard (TK51G), through its |
+|   2.4G receiver or a direct USB connection                |
 |                                                           |
 |   Protocol reverse engineered by the open-ek75 project    |
 |   (https://github.com/mateusands/open-ek75), see          |
@@ -24,10 +24,16 @@
 
 /*---------------------------------------------------------*\
 | USB IDs                                                   |
+|                                                             |
+| Two transports, same vendor interface number and protocol |
+| (verified [hw], see docs/RESEARCH.md#direct-usb-wired):    |
+|   - through the 2.4G receiver, PID 0x0042                  |
+|   - direct USB cable, PID 0x0045                           |
 \*---------------------------------------------------------*/
 #define DAREU_VID                       0x260D
 #define DAREU_EK75_RECEIVER_PID         0x0042
-#define DAREU_EK75_RECEIVER_INTERFACE   3
+#define DAREU_EK75_WIRED_PID            0x0045
+#define DAREU_EK75_VENDOR_INTERFACE     3
 
 /*---------------------------------------------------------*\
 | Protocol                                                  |
@@ -108,11 +114,18 @@ struct DareuEffectState
 class DareuEK75Device
 {
 public:
-    DareuEK75Device(hid_device* dev_handle, const std::string& path);
+    /*-----------------------------------------------------*\
+    | device_pid is the PID that was detected (defaults to  |
+    | the receiver's, so every existing call site that only |
+    | ever talked to a receiver keeps compiling unchanged). |
+    | It decides which path Connect() takes.                |
+    \*-----------------------------------------------------*/
+    DareuEK75Device(hid_device* dev_handle, const std::string& path, unsigned short device_pid = DAREU_EK75_RECEIVER_PID);
     ~DareuEK75Device();
 
     /*-----------------------------------------------------*\
-    | Locate the keyboard behind the receiver               |
+    | Locate the keyboard: through the receiver's pairing   |
+    | handshake, or directly at target 0 when wired         |
     \*-----------------------------------------------------*/
     bool                        Connect();
 
@@ -133,6 +146,7 @@ private:
     std::string                 location;
     std::mutex                  lock;
     unsigned char               target_id;
+    unsigned short              pid;
     unsigned short              keyboard_pid;
     std::chrono::steady_clock::time_point last_transfer;
 };

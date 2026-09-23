@@ -1,8 +1,8 @@
 /*---------------------------------------------------------*\
 | DareuEK75Controller.cpp                                   |
 |                                                           |
-|   Driver for the Dareu EK75 keyboard (TK51G) through its  |
-|   2.4G receiver                                           |
+|   Driver for the Dareu EK75 keyboard (TK51G), through its |
+|   2.4G receiver or a direct USB connection                |
 |                                                           |
 |   This file is part of the OpenRGB project                |
 |   SPDX-License-Identifier: GPL-2.0-or-later               |
@@ -32,11 +32,12 @@ using namespace std::chrono_literals;
 \*---------------------------------------------------------*/
 #define DAREU_REPLY_PAYLOAD             6
 
-DareuEK75Device::DareuEK75Device(hid_device* dev_handle, const std::string& path)
+DareuEK75Device::DareuEK75Device(hid_device* dev_handle, const std::string& path, unsigned short device_pid)
 {
     dev             = dev_handle;
     location        = path;
     target_id       = 0;
+    pid             = device_pid;
     keyboard_pid    = 0;
     last_transfer   = std::chrono::steady_clock::now();
 }
@@ -151,6 +152,22 @@ bool DareuEK75Device::Lighting(unsigned char command, unsigned char size, unsign
 
 bool DareuEK75Device::Connect()
 {
+    /*-----------------------------------------------------*\
+    | A directly wired keyboard answers lighting commands   |
+    | at target 0 straight away: there is no receiver to    |
+    | pair through, and no slot to pick. Verified [hw], see |
+    | docs/RESEARCH.md#direct-usb-wired. The wireless status |
+    | query below is a receiver-only command and gets no    |
+    | reply over this transport, which is expected.         |
+    \*-----------------------------------------------------*/
+    if(pid == DAREU_EK75_WIRED_PID)
+    {
+        target_id       = 0;
+        keyboard_pid    = pid;
+
+        return(true);
+    }
+
     /*-----------------------------------------------------*\
     | Ask the receiver itself (target 0) which keyboards    |
     | are paired. Slot n is addressed as (n + 1) << 4.      |

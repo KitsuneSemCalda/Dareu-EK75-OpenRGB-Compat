@@ -15,9 +15,11 @@
 #include "LogManager.h"
 
 /*---------------------------------------------------------*\
-| The keyboard is reached through the 2.4G receiver. Its    |
-| configuration channel is the vendor feature report on     |
-| interface 3.                                              |
+| The keyboard is reached either through the 2.4G receiver  |
+| (PID 0x0042) or directly over USB (PID 0x0045, verified    |
+| [hw]; see docs/RESEARCH.md#direct-usb-wired). Both use the |
+| same vendor feature report on interface 3; only how        |
+| DareuEK75Device::Connect() addresses the keyboard differs. |
 \*---------------------------------------------------------*/
 DetectedControllers DetectDareuEK75(hid_device_info* info, const std::string& name)
 {
@@ -33,7 +35,7 @@ DetectedControllers DetectDareuEK75(hid_device_info* info, const std::string& na
     | The device closes the handle when the last region     |
     | controller releases it                                |
     \*-----------------------------------------------------*/
-    std::shared_ptr<DareuEK75Device> device = std::make_shared<DareuEK75Device>(dev, info->path);
+    std::shared_ptr<DareuEK75Device> device = std::make_shared<DareuEK75Device>(dev, info->path, info->product_id);
 
     if(!device->Connect())
     {
@@ -75,4 +77,5 @@ DetectedControllers DetectDareuEK75(hid_device_info* info, const std::string& na
     return(detected_controllers);
 }
 
-REGISTER_HID_DETECTOR_I("Dareu EK75", DetectDareuEK75, DAREU_VID, DAREU_EK75_RECEIVER_PID, DAREU_EK75_RECEIVER_INTERFACE);
+REGISTER_HID_DETECTOR_I("Dareu EK75", DetectDareuEK75, DAREU_VID, DAREU_EK75_RECEIVER_PID, DAREU_EK75_VENDOR_INTERFACE);
+REGISTER_HID_DETECTOR_I("Dareu EK75", DetectDareuEK75, DAREU_VID, DAREU_EK75_WIRED_PID, DAREU_EK75_VENDOR_INTERFACE);

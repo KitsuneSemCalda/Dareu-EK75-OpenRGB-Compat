@@ -43,6 +43,8 @@ struct FakeReceiver
     unsigned short              keyboard_pid    = 0x0045;
     unsigned int                not_ready_polls = 1;
     bool                        answer_wireless = true;
+    /* A direct USB connection: lighting answers at target 0, no receiver to pair through. */
+    bool                        wired           = false;
     std::map<int, FakeRegion>   regions;
 
     /*-----------------------------------------------------*\

@@ -115,6 +115,45 @@ int main(int argc, char* argv[])
         });
     });
 
+    describe("Connect (direct USB, PID 0x0045)", {
+        beforeEach(Fresh);
+
+        it("succeeds at target 0 without asking for wireless status", {
+            g_receiver.wired = true;
+            DareuEK75Device dev((hid_device*)&g_receiver, "p", DAREU_EK75_WIRED_PID);
+
+            expect(dev.Connect()).toBeTruthy();
+            expect(I(dev.target_id)).toEqual(0);
+            expect(I(dev.GetKeyboardPID())).toEqual(DAREU_EK75_WIRED_PID);
+            expect((int)g_receiver.sent.size()).toEqual(0);
+        });
+
+        it("reaches the keyboard's lighting commands at target 0", {
+            g_receiver.wired = true;
+            DareuEK75Device dev((hid_device*)&g_receiver, "p", DAREU_EK75_WIRED_PID);
+            dev.Connect();
+
+            unsigned char reply[DAREU_REPORT_SIZE];
+            expect(dev.Lighting(DAREU_LED_CMD_BRIGHTNESS | DAREU_CMD_GET, 1, 1, { 1 }, reply)).toBeTruthy();
+        });
+
+        it("does not fall back to receiver-style addressing when wired", {
+            g_receiver.wired = true;
+            DareuEK75Device dev((hid_device*)&g_receiver, "p", DAREU_EK75_WIRED_PID);
+            dev.Connect();
+
+            unsigned char reply[DAREU_REPORT_SIZE];
+            expect(dev.Transfer(0x10, 1, DAREU_CLASS_LIGHTING, DAREU_LED_CMD_BRIGHTNESS | DAREU_CMD_GET, 1, { 1 }, reply)).toBeFalsy();
+        });
+
+        it("the receiver PID still takes the pairing handshake path", {
+            DareuEK75Device dev((hid_device*)&g_receiver, "p", DAREU_EK75_RECEIVER_PID);
+
+            expect(dev.Connect()).toBeTruthy();
+            expect(I(dev.target_id)).toEqual(0x10);
+        });
+    });
+
     describe("Packet encoding", {
         beforeEach(Fresh);
 

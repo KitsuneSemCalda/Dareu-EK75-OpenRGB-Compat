@@ -6,7 +6,8 @@ typedef struct hid_device_ hid_device;
 
 struct hid_device_info
 {
-    char* path;
+    char*           path;
+    unsigned short  product_id = 0;
 };
 
 extern "C"

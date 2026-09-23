@@ -71,7 +71,8 @@ static void Answer(FakeReceiver& r, const unsigned char* p)
 
     if(cls == 0)
     {
-        if(target != 0 || op != 32 || !get || !r.answer_wireless)
+        /* A wired keyboard has no receiver to ask, so this command never gets a reply. */
+        if(r.wired || target != 0 || op != 32 || !get || !r.answer_wireless)
         {
             return;
         }
@@ -91,7 +92,10 @@ static void Answer(FakeReceiver& r, const unsigned char* p)
     }
     else if(cls == 3)
     {
-        if(target != r.KeyboardTarget() || !r.keyboard_paired)
+        /* Wired: the keyboard itself answers at target 0, no pairing to check. */
+        const unsigned char expected_target = r.wired ? 0 : r.KeyboardTarget();
+
+        if(target != expected_target || (!r.wired && !r.keyboard_paired))
         {
             return;
         }
