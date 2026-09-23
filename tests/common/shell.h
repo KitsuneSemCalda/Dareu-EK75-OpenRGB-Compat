@@ -127,7 +127,12 @@ struct ToolEnv
             WriteFile(home + "/.config/omarchy/themes/" + theme_dir + "/colors.toml", colors_toml);
         }
 
-        prefix = "env HOME='" + home + "' PATH='" + home + "/bin:" + getenv("PATH") + "' OPENRGB='" + home + "/bin/openrgb' FAKE_LOG='" + log + "' FAKE_THEME='Tokyo Night' ";
+        /* XDG_CONFIG_HOME is pinned here too: the ambient one (set by the desktop session
+           this suite happens to run under) would otherwise leak into the colour-profile
+           path apply-theme.sh resolves, breaking the scratch HOME's isolation. */
+        prefix = "env HOME='" + home + "' XDG_CONFIG_HOME='" + home + "/.config' PATH='" + home + "/bin:" +
+                 getenv("PATH") + "' OPENRGB='" + home + "/bin/openrgb' COLOR_TRANSFORM='" + Root() +
+                 "/tools/color_transform.py' FAKE_LOG='" + log + "' FAKE_THEME='Tokyo Night' ";
     }
 
     ~ToolEnv()

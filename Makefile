@@ -18,9 +18,16 @@ FAKE      = tests/fake/fake_receiver.cpp
 
 SUITES    = unit integration e2e
 
-.PHONY: test $(addprefix test-,$(SUITES)) clean
+.PHONY: test $(addprefix test-,$(SUITES)) test-color-transform clean
 
-test: $(addprefix test-,$(SUITES))
+test: $(addprefix test-,$(SUITES)) test-color-transform
+
+# Pure-function tests for the theme colour transform, no OpenRGB or keyboard involved.
+# Kept as plain unittest scripts (stdlib only) rather than a fourth Cest suite, since
+# they test tools/color_transform.py and tools/calibrate_color.py directly in Python.
+test-color-transform:
+	python3 tests/unit/test_color_transform.py -v
+	python3 tests/unit/test_calibrate_color.py -v
 
 define suite
 $(OUT)/$(1): $(wildcard tests/$(1)/*.cpp) $(DRIVER) $(FAKE) $(wildcard tests/fake/*.h tests/stubs/*.h tests/common/*.h src/DareuEK75Controller/*.h)

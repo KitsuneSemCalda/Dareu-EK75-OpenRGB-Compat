@@ -28,12 +28,12 @@ static std::string Hex(unsigned int v)
 void run_tools_tests()
 {
     describe("apply-theme.sh", {
-        it("sets Static with the accent of the named theme", {
+        it("sets the accent colour of the named theme, keeping whatever mode is active", {
             ToolEnv env("tokyo-night", THEME_TOKYO);
             ShellResult r = Sh(env.prefix + Tool("apply-theme.sh") + " 'Tokyo Night'");
 
             expect(r.code).toEqual(0);
-            expect(env.Args()).toEqual("--noautoconnect|-d|Dareu EK75|-m|Static|-c|7aa2f7|");
+            expect(env.Args()).toEqual("--noautoconnect|-d|Dareu EK75|-c|7aa2f7|");
             expect(r.out).toContain("EK75 -> #7aa2f7 (Tokyo Night, accent)");
         });
 
@@ -93,6 +93,90 @@ void run_tools_tests()
             expect(r.code).toEqual(1);
             expect(Exists(env.log)).toBeFalsy();
         });
+
+        it("prefers keyboard.rgb over colors.toml when the theme has one", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            WriteFile(env.home + "/.config/omarchy/themes/tokyo-night/keyboard.rgb", "#c0ffee\n");
+            ShellResult r = Sh(env.prefix + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(0);
+            expect(env.Args()).toContain("-c|c0ffee|");
+            expect(r.out).toContain("keyboard.rgb");
+        });
+
+        it("falls back to COLOR_KEY when the theme has no keyboard.rgb", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            ShellResult r = Sh(env.prefix + "COLOR_KEY=background " + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(0);
+            expect(env.Args()).toContain("-c|1a1b26|");
+        });
+
+        it("rejects a keyboard.rgb that is not six hex digits", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            WriteFile(env.home + "/.config/omarchy/themes/tokyo-night/keyboard.rgb", "not-a-colour\n");
+            ShellResult r = Sh(env.prefix + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(1);
+            expect(Exists(env.log)).toBeFalsy();
+        });
+
+        it("does not run the colour transform when there is no profile file", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            ShellResult r = Sh(env.prefix + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(0);
+            expect(env.Args()).toEqual("--noautoconnect|-d|Dareu EK75|-c|7aa2f7|");
+        });
+
+        it("runs the colour transform and sends brightness when a profile file exists", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            WriteFile(env.home + "/.config/dareu-ek75/color-profile.toml",
+                      "[keyboard]\nbrightness = 60\n\n[channels]\nred_gain = 1.2\n");
+            ShellResult r = Sh(env.prefix + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(0);
+            expect(env.Args()).toContain("-b|60|");
+            expect(Contains(env.Args(), "-c|7aa2f7|")).toBeFalsy();
+        });
+
+        it("a neutral profile file leaves the colour unchanged and adds no brightness", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            WriteFile(env.home + "/.config/dareu-ek75/color-profile.toml", "[color]\nmax_chroma = 5.0\n");
+            ShellResult r = Sh(env.prefix + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(0);
+            expect(env.Args()).toEqual("--noautoconnect|-d|Dareu EK75|-c|7aa2f7|");
+        });
+
+        it("fails without touching the keyboard when the profile file is malformed", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            WriteFile(env.home + "/.config/dareu-ek75/color-profile.toml", "this is not [ valid toml");
+            ShellResult r = Sh(env.prefix + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(1);
+            expect(Exists(env.log)).toBeFalsy();
+        });
+
+        it("fails without touching the keyboard when the profile brightness is out of range", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            WriteFile(env.home + "/.config/dareu-ek75/color-profile.toml", "[keyboard]\nbrightness = 150\n");
+            ShellResult r = Sh(env.prefix + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(1);
+            expect(r.out).toContain("brightness");
+            expect(Exists(env.log)).toBeFalsy();
+        });
+
+        it("respects DAREU_COLOR_PROFILE to point at another profile file", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            std::string profile = env.home + "/alt-profile.toml";
+            WriteFile(profile, "[keyboard]\nbrightness = 42\n");
+            ShellResult r = Sh(env.prefix + "DAREU_COLOR_PROFILE='" + profile + "' " + Tool("apply-theme.sh") + " tokyo-night");
+
+            expect(r.code).toEqual(0);
+            expect(env.Args()).toContain("-b|42|");
+        });
     });
 
     describe("install-hook.sh", {
@@ -104,6 +188,16 @@ void run_tools_tests()
             expect(r.code).toEqual(0);
             expect(IsExecutable(hook)).toBeTruthy();
             expect(ReadFile(hook)).toEqual(ReadFile(Tool("apply-theme.sh")));
+        });
+
+        it("also installs the colour-transform helper the hook depends on", {
+            ToolEnv env("tokyo-night", THEME_TOKYO);
+            ShellResult r = Sh(env.prefix + Tool("install-hook.sh"));
+            std::string lib = env.home + "/.local/lib/dareu-ek75/color_transform.py";
+
+            expect(r.code).toEqual(0);
+            expect(IsExecutable(lib)).toBeTruthy();
+            expect(ReadFile(lib)).toEqual(ReadFile(Tool("color_transform.py")));
         });
 
         it("makes the hook apply the theme Omarchy passes to it, not the current one", {
@@ -129,7 +223,8 @@ void run_tools_tests()
             ToolEnv env("tokyo-night", THEME_TOKYO);
             WriteFile(env.home + "/system.desktop", "[Desktop Entry]\nExec=/usr/bin/openrgb\n");
             std::string checkout = env.home + "/checkout";
-            expect(Sh("mkdir -p '" + checkout + "/tools' && cp '" + Root() + "/tools/'*.sh '" + checkout + "/tools/'").code).toEqual(0);
+            expect(Sh("mkdir -p '" + checkout + "/tools' && cp '" + Root() + "/tools/'*.sh '" + Root() +
+                       "/tools/color_transform.py' '" + checkout + "/tools/'").code).toEqual(0);
             expect(Sh(env.prefix + "SYSTEM_ENTRY='" + env.home + "/system.desktop' " + checkout + "/tools/install-launcher.sh").code).toEqual(0);
             expect(Sh(env.prefix + checkout + "/tools/install-hook.sh").code).toEqual(0);
             expect(Sh("rm -rf '" + checkout + "' '" + env.home + "/bin/openrgb'").code).toEqual(0);
