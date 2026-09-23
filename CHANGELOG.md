@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-09-22
 
 ### Added
 - Direct USB support (`260d:0045`), verified `[hw]`: same vendor interface, protocol and effect
