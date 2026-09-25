@@ -9,9 +9,18 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 OPENRGB_DIR=${OPENRGB_DIR:-build/OpenRGB}
 OPENRGB_URL=https://gitlab.com/CalcProgrammer1/OpenRGB.git
+# Last commit verified (CI "Build with OpenRGB") to build cleanly with this
+# controller. Cloning the branch tip instead let an unrelated upstream change
+# break the default build path with no change on our side. Bump this after
+# confirming a newer commit still builds; --update opts out and tracks
+# upstream's default branch instead.
+OPENRGB_PINNED_COMMIT=4f31ee4ff3962826c424c4ef1ad2b71a66cf5f4e
 
 if [[ ! -d $OPENRGB_DIR ]]; then
-    git clone --depth 1 "$OPENRGB_URL" "$OPENRGB_DIR"
+    git init -q "$OPENRGB_DIR"
+    git -C "$OPENRGB_DIR" remote add origin "$OPENRGB_URL"
+    git -C "$OPENRGB_DIR" fetch --depth 1 origin "$OPENRGB_PINNED_COMMIT"
+    git -C "$OPENRGB_DIR" checkout -q FETCH_HEAD
 fi
 
 if [[ ${1:-} == --update ]]; then
