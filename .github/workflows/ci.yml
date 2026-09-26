@@ -17,7 +17,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: shellcheck
         run: shellcheck tools/*.sh install.sh
       - name: tools/*.py compile
@@ -31,14 +31,14 @@ jobs:
       matrix:
         cxx: [g++, clang++]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y clang make udev
       - name: Unit, integration and e2e
         run: make test CXX=${{ matrix.cxx }} JUNIT=1
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: junit-${{ matrix.cxx }}
           path: build/tests/*.xml
@@ -47,7 +47,7 @@ jobs:
     name: Tests (ASan + UBSan)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y make udev
       - name: Unit, integration and e2e under sanitizers
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install OpenRGB build dependencies
         run: >
           sudo apt-get update && sudo apt-get install -y

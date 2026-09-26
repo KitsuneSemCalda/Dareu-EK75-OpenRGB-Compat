@@ -55,7 +55,11 @@ lighting.
 
 It needs the Qt 6 build dependencies of OpenRGB and runs four steps:
 
-1. `tools/install-udev.sh` lets your user open the receiver's hidraw node (asks for sudo)
+1. `tools/install-udev.sh` lets your user open the receiver's hidraw node. It
+   re-executes itself with `sudo` automatically (no separate confirmation
+   prompt beyond `sudo`'s own password check), since it only writes a udev
+   rule under `/etc/udev/rules.d` and reloads `udevadm` — review the script
+   before running it if you want to see exactly what it does as root
 2. `tools/build.sh` clones OpenRGB into `build/`, adds `src/DareuEK75Controller` and compiles
 3. `tools/install-launcher.sh` copies the build to `~/.local/lib/dareu-ek75/openrgb`
    and points the OpenRGB menu entry and login autostart at that copy,
